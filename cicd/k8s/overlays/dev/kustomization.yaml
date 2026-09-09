@@ -7,7 +7,7 @@ resources:
 # E ESTA linha que o Argo CD observa: o commit e o gatilho do deploy.
 images:
   - name: ghcr.io/mateusjacomine/demo-api
-    newTag: 35d7f93
+    newTag: 7962b92
 replicas:
   - name: demo-api
     count: 1
@@ -24,4 +24,4 @@ patches:
     patch: |-
       - op: replace
         path: /spec/template/spec/containers/0/env/0/value
-        value: "dev"  # APP_VERSION
+        value: "7962b92"  # APP_VERSION
