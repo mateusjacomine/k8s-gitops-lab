@@ -54,7 +54,7 @@ bash argocd/install.sh
 bash bootstrap.sh
 
 # 3. UI
-#    https://192.168.172.130:30443   admin / <senha do install.sh>
+#    https://192.168.172.130:30443   admin / veja o comando abaixo
 ```
 
 ## Demonstrações que valem numa entrevista

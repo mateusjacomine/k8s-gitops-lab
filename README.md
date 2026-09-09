@@ -94,7 +94,7 @@ Pipeline completo rodando: push → testes → build → GHCR → commit da tag 
 Argo CD sincroniza o cluster.
 
 ```
-UI do Argo CD: https://192.168.172.130:30443   (admin / YOYVoImMEhKM45Sc)
+UI do Argo CD: https://192.168.172.130:30443   (admin / veja o comando abaixo)
 Repositório:   https://github.com/mateusjacomine/k8s-gitops-lab
 ```
 
@@ -103,6 +103,12 @@ Demonstração mais forte — **self-healing** (validada: reverteu em ~5s):
 ```bash
 kubectl -n demo-dev scale deployment demo-api --replicas=5
 kubectl -n demo-dev get deploy demo-api -w
+```
+
+Recupere a senha inicial com:
+
+```bash
+kubectl -n argocd get secret argocd-initial-admin-secret   -o jsonpath='{.data.password}' | base64 -d
 ```
 
 Detalhes em [cicd/README.md](cicd/README.md).
