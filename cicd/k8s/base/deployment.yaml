@@ -43,10 +43,11 @@ spec:
             - name: http
               containerPort: 8000
           env:
+            # Sobrescrito por cada overlay com a tag real da imagem.
+            # Nao usar fieldRef de label: labels com includeSelectors=false
+            # nao chegam ao pod template e a variavel viria vazia.
             - name: APP_VERSION
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.labels['app.kubernetes.io/version']
+              value: "dev"
           resources:
             requests:
               cpu: 50m

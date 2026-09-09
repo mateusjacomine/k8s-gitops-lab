@@ -16,3 +16,12 @@ labels:
     pairs:
       app.kubernetes.io/version: dev
       environment: dev
+
+patches:
+  - target:
+      kind: Deployment
+      name: demo-api
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/env/0/value
+        value: "dev"  # APP_VERSION

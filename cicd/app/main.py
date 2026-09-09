@@ -21,7 +21,9 @@ from prometheus_client import (
     generate_latest,
 )
 
-VERSION = os.getenv("APP_VERSION", "dev")
+# or "dev" cobre APP_VERSION definido porem VAZIO — o default do getenv
+# so age quando a variavel nao existe. FastAPI recusa version vazia.
+VERSION = os.getenv("APP_VERSION") or "dev"
 # Simula app com boot lento — e o motivo de existir startupProbe
 BOOT_DELAY = float(os.getenv("BOOT_DELAY_SECONDS", "0"))
 

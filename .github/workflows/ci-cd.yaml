@@ -105,6 +105,9 @@ jobs:
         run: |
           TAG="${{ needs.build.outputs.image_tag }}"
           sed -i "s|newTag: .*|newTag: ${TAG}|" kustomization.yaml
+          # Mantem APP_VERSION igual a tag: /metrics e / passam a reportar
+          # exatamente qual build esta rodando.
+          sed -i "s|value: \".*\"  # APP_VERSION|value: \"${TAG}\"  # APP_VERSION|" kustomization.yaml
           echo "--- kustomization.yaml ---"
           cat kustomization.yaml
 

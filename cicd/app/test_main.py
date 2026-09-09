@@ -1,4 +1,6 @@
 """Testes que rodam no CI antes de qualquer build."""
+import os
+
 from fastapi.testclient import TestClient
 
 from main import app
@@ -57,3 +59,29 @@ def test_metrics_nao_explode_cardinalidade():
     corpo = client.get("/metrics").text
     # query string nao pode virar label
     assert "ms=1" not in corpo
+
+
+def test_version_nunca_vazia():
+    """
+    Regressao: APP_VERSION definido porem VAZIO fazia o FastAPI abortar no
+    import com AssertionError, causando CrashLoopBackOff no cluster.
+    O default do os.getenv nao cobre esse caso — so cobre variavel ausente.
+
+    Roda em subprocesso: recarregar o modulo no processo atual quebraria o
+    registry global do prometheus_client (metricas duplicadas).
+    """
+    import subprocess
+    import sys
+
+    codigo = (
+        "import os; os.environ['APP_VERSION'] = ''; "
+        "import main; "
+        "assert main.VERSION, 'VERSION vazia'; "
+        "assert main.app.version, 'app.version vazia'; "
+        "print('ok')"
+    )
+    r = subprocess.run(
+        [sys.executable, "-c", codigo],
+        capture_output=True, text=True, cwd=os.path.dirname(os.path.abspath(__file__)),
+    )
+    assert r.returncode == 0, "app nao sobe com APP_VERSION vazia: " + r.stderr[-600:]
