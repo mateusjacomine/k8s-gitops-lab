@@ -7,7 +7,7 @@ resources:
 # E ESTA linha que o Argo CD observa: o commit e o gatilho do deploy.
 images:
   - name: ghcr.io/mateusjacomine/demo-api
-    newTag: dev
+    newTag: 35d7f93
 replicas:
   - name: demo-api
     count: 1
