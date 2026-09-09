@@ -66,6 +66,7 @@ bash break.sh fix                  # restaura tudo
 | [labs/02-nodes/](labs/02-nodes/) | PDB que bloqueia drain |
 | [labs/03-network/](labs/03-network/) | Services quebrados, NetworkPolicy |
 | [labs/04-observability/](labs/04-observability/) | CPU throttling, classes de QoS |
+| **[PASSO-A-PASSO-CICD.md](PASSO-A-PASSO-CICD.md)** | **Guia executável: comandos na ordem, com saída esperada** |
 | **[COMO-FUNCIONA-CICD.md](COMO-FUNCIONA-CICD.md)** | **A esteira explicada do zero, passo a passo** |
 | **[DOCUMENTACAO-TECNICA-CICD.md](DOCUMENTACAO-TECNICA-CICD.md)** | **Especificação técnica: ADRs, evidências, RCA, operação** |
 | **[cicd/](cicd/)** | **Esteira GitOps: FastAPI + Actions + Argo CD** |
@@ -113,13 +114,14 @@ Recupere a senha inicial com:
 kubectl -n argocd get secret argocd-initial-admin-secret   -o jsonpath='{.data.password}' | base64 -d
 ```
 
-**Dois documentos, dois públicos:**
+**Três documentos, três usos:**
 
-- 📘 [COMO-FUNCIONA-CICD.md](COMO-FUNCIONA-CICD.md) — a esteira explicada do
-  zero, sem pressupor Docker ou Kubernetes. Comece por aqui.
-- 📐 [DOCUMENTACAO-TECNICA-CICD.md](DOCUMENTACAO-TECNICA-CICD.md) — especificação
-  técnica: ADRs, inventário, evidências de validação, RCA do incidente,
-  procedimentos de operação e roadmap.
+- 🔧 [PASSO-A-PASSO-CICD.md](PASSO-A-PASSO-CICD.md) — **para reproduzir**:
+  comando a comando, na ordem, com a saída esperada de cada um.
+- 📘 [COMO-FUNCIONA-CICD.md](COMO-FUNCIONA-CICD.md) — **para entender**:
+  a esteira explicada do zero, sem pressupor Docker ou Kubernetes.
+- 📐 [DOCUMENTACAO-TECNICA-CICD.md](DOCUMENTACAO-TECNICA-CICD.md) — **para
+  revisar**: ADRs, inventário, evidências, RCA e roadmap.
 
 Referência rápida em [cicd/README.md](cicd/README.md).
 
