@@ -66,6 +66,7 @@ bash break.sh fix                  # restaura tudo
 | [labs/02-nodes/](labs/02-nodes/) | PDB que bloqueia drain |
 | [labs/03-network/](labs/03-network/) | Services quebrados, NetworkPolicy |
 | [labs/04-observability/](labs/04-observability/) | CPU throttling, classes de QoS |
+| **[cicd/](cicd/)** | **Esteira GitOps: FastAPI + Actions + Argo CD** |
 | **[coding/ESQUELETOS.md](coding/ESQUELETOS.md)** | **O que memorizar para codar do zero (~45 e ~60 linhas)** |
 | **[coding/treino/](coding/treino/)** | **Exercícios em branco com testes automáticos** |
 | [coding/python/](coding/python/) | `pod_analyzer.py` — versão completa, para referência |
@@ -86,6 +87,25 @@ Todos os cenários foram executados e produziram o comportamento esperado:
 - NetworkPolicy: baseline 200 → deny bloqueia tudo → allow libera só o frontend
 - Go: `go vet` limpo, `-race` sem data races, cancelamento por context
 - Python: todos os casos de borda (listas vazias, campos ausentes, timestamps)
+
+## Esteira GitOps
+
+Pipeline completo rodando: push → testes → build → GHCR → commit da tag →
+Argo CD sincroniza o cluster.
+
+```
+UI do Argo CD: https://192.168.172.130:30443   (admin / YOYVoImMEhKM45Sc)
+Repositório:   https://github.com/mateusjacomine/k8s-gitops-lab
+```
+
+Demonstração mais forte — **self-healing** (validada: reverteu em ~5s):
+
+```bash
+kubectl -n demo-dev scale deployment demo-api --replicas=5
+kubectl -n demo-dev get deploy demo-api -w
+```
+
+Detalhes em [cicd/README.md](cicd/README.md).
 
 ## Roteiro sugerido (48h)
 
