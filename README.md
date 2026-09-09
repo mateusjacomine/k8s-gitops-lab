@@ -67,6 +67,7 @@ bash break.sh fix                  # restaura tudo
 | [labs/03-network/](labs/03-network/) | Services quebrados, NetworkPolicy |
 | [labs/04-observability/](labs/04-observability/) | CPU throttling, classes de QoS |
 | **[COMO-FUNCIONA-CICD.md](COMO-FUNCIONA-CICD.md)** | **A esteira explicada do zero, passo a passo** |
+| **[DOCUMENTACAO-TECNICA-CICD.md](DOCUMENTACAO-TECNICA-CICD.md)** | **Especificação técnica: ADRs, evidências, RCA, operação** |
 | **[cicd/](cicd/)** | **Esteira GitOps: FastAPI + Actions + Argo CD** |
 | **[coding/ESQUELETOS.md](coding/ESQUELETOS.md)** | **O que memorizar para codar do zero (~45 e ~60 linhas)** |
 | **[coding/treino/](coding/treino/)** | **Exercícios em branco com testes automáticos** |
@@ -112,10 +113,15 @@ Recupere a senha inicial com:
 kubectl -n argocd get secret argocd-initial-admin-secret   -o jsonpath='{.data.password}' | base64 -d
 ```
 
-📘 **Novo por aqui?** Leia [COMO-FUNCIONA-CICD.md](COMO-FUNCIONA-CICD.md) —
-explica a esteira inteira do zero, sem pressupor Docker ou Kubernetes.
+**Dois documentos, dois públicos:**
 
-Detalhes técnicos em [cicd/README.md](cicd/README.md).
+- 📘 [COMO-FUNCIONA-CICD.md](COMO-FUNCIONA-CICD.md) — a esteira explicada do
+  zero, sem pressupor Docker ou Kubernetes. Comece por aqui.
+- 📐 [DOCUMENTACAO-TECNICA-CICD.md](DOCUMENTACAO-TECNICA-CICD.md) — especificação
+  técnica: ADRs, inventário, evidências de validação, RCA do incidente,
+  procedimentos de operação e roadmap.
+
+Referência rápida em [cicd/README.md](cicd/README.md).
 
 ## Roteiro sugerido (48h)
 
