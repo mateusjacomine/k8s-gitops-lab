@@ -1,0 +1,31 @@
+# A Application e o coracao do GitOps: declara "o estado de demo-prod deve ser
+# o que estiver neste caminho do repositorio". O Argo CD faz o resto.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: demo-api-prod
+  namespace: argocd
+  finalizers:
+    # Garante que deletar a Application remova tambem os recursos no cluster
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/mateusjacomine/k8s-gitops-lab.git
+    targetRevision: main
+    path: cicd/k8s/overlays/prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: demo-prod
+  syncPolicy:
+    # SEM 'automated': producao exige sync manual (clique na UI ou 'argocd app sync').
+    # Promover para prod e uma decisao, nao um efeito colateral do build.
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

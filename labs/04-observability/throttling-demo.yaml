@@ -1,0 +1,75 @@
+# Demonstra CPU throttling: o container fica LENTO sem erro, sem restart e
+# com log limpo. So a metrica revela — o argumento central do roteiro sobre
+# por que metricas e logs nao se substituem.
+#
+#   kubectl apply -f throttling-demo.yaml
+#   kubectl exec throttled -- cat /sys/fs/cgroup/cpu.stat
+#   kubectl exec sem-limite -- cat /sys/fs/cgroup/cpu.stat   # comparar
+#
+# Em throttled: nr_throttled e throttled_usec sobem sem parar.
+# Em sem-limite: nr_throttled fica em 0.
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: throttled
+  labels:
+    demo: throttling
+spec:
+  containers:
+    - name: burner
+      image: polinux/stress
+      command: ["stress", "--cpu", "2"]   # quer 2 CPUs inteiras
+      resources:
+        requests:
+          cpu: "100m"
+        limits:
+          cpu: "200m"                      # recebe 0.2 -> congelado ~90% do tempo
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sem-limite
+  labels:
+    demo: throttling
+spec:
+  containers:
+    - name: burner
+      image: polinux/stress
+      command: ["stress", "--cpu", "1"]
+      resources:
+        requests:
+          cpu: "100m"
+        # sem limits: nunca sofre throttle (mas pode virar "vizinho barulhento")
+---
+# QoS Guaranteed: requests == limits em TODOS os containers.
+# Ultimo a ser despejado sob pressao de recursos.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: qos-guaranteed
+  labels:
+    demo: qos
+spec:
+  containers:
+    - name: app
+      image: nginx:1.27-alpine
+      resources:
+        requests:
+          cpu: "100m"
+          memory: "64Mi"
+        limits:
+          cpu: "100m"
+          memory: "64Mi"
+---
+# QoS BestEffort: sem requests nem limits. PRIMEIRO a morrer sob pressao.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: qos-besteffort
+  labels:
+    demo: qos
+spec:
+  containers:
+    - name: app
+      image: nginx:1.27-alpine

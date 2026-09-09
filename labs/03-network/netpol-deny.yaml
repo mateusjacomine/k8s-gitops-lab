@@ -1,0 +1,39 @@
+# NetworkPolicies — aplicar DEPOIS de validar que a conectividade funciona.
+# Ordem didatica: (1) provar que funciona -> (2) aplicar deny -> (3) provar que
+# quebrou -> (4) aplicar allow seletivo -> (5) provar que voltou.
+---
+# PASSO 2: default-deny de ingress no namespace backend.
+# podSelector {} = TODOS os pods do namespace.
+# A partir daqui, NADA entra em backend — nem do frontend, nem do proprio backend.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: backend
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+# PASSO 4: libera SOMENTE o namespace frontend a falar com pods app=api na 80.
+# Requer que o namespace frontend tenha o label kubernetes.io/metadata.name
+# (o Kubernetes >=1.21 adiciona esse label automaticamente).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-frontend-to-api
+  namespace: backend
+spec:
+  podSelector:
+    matchLabels:
+      app: api
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: frontend
+      ports:
+        - protocol: TCP
+          port: 80

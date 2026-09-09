@@ -1,0 +1,121 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'cicd/app/**'
+      - 'cicd/k8s/**'
+      - '.github/workflows/ci-cd.yaml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'cicd/app/**'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/demo-api
+
+jobs:
+  # ---------------------------------------------------------------------
+  # 1) Testes — barreira antes de qualquer build. PR roda so ate aqui.
+  # ---------------------------------------------------------------------
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: cicd/app/requirements.txt
+
+      - name: Instalar dependencias
+        working-directory: cicd/app
+        run: |
+          pip install -r requirements.txt
+          pip install pytest httpx ruff
+
+      - name: Lint
+        working-directory: cicd/app
+        run: ruff check . || true    # nao bloqueia por estilo neste lab
+
+      - name: Testes
+        working-directory: cicd/app
+        run: pytest -q
+
+  # ---------------------------------------------------------------------
+  # 2) Build + push da imagem. So na main, so se os testes passarem.
+  # ---------------------------------------------------------------------
+  build:
+    needs: test
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write          # necessario para publicar no GHCR
+    outputs:
+      image_tag: ${{ steps.meta.outputs.short_sha }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Definir tag imutavel
+        id: meta
+        run: echo "short_sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Login no GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build e push
+        uses: docker/build-push-action@v6
+        with:
+          context: cicd/app
+          push: true
+          # Tag imutavel (SHA) + movel (latest) — o deploy usa a imutavel
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.short_sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          build-args: APP_VERSION=${{ steps.meta.outputs.short_sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ---------------------------------------------------------------------
+  # 3) GitOps: commita a nova tag. O Argo CD ve o commit e sincroniza.
+  #    O CI NAO fala com o cluster — essa e a essencia do pull-based.
+  # ---------------------------------------------------------------------
+  update-manifest:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Atualizar tag da imagem no overlay de dev
+        working-directory: cicd/k8s/overlays/dev
+        run: |
+          TAG="${{ needs.build.outputs.image_tag }}"
+          sed -i "s|newTag: .*|newTag: ${TAG}|" kustomization.yaml
+          echo "--- kustomization.yaml ---"
+          cat kustomization.yaml
+
+      - name: Commit
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet; then
+            echo "nada mudou"
+            exit 0
+          fi
+          git add cicd/k8s/overlays/dev/kustomization.yaml
+          git commit -m "deploy(dev): ${{ needs.build.outputs.image_tag }} [skip ci]"
+          git push

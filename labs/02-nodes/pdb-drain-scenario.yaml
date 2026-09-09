@@ -1,0 +1,67 @@
+# Cenario: PDB que BLOQUEIA o drain — a pegadinha classica de producao.
+#
+# Roteiro do exercicio:
+#   kubectl apply -f pdb-drain-scenario.yaml
+#   kubectl get pdb -n lab-nodes            # ALLOWED DISRUPTIONS: 0
+#   kubectl drain k8s-w1 --ignore-daemonsets --delete-emptydir-data
+#   -> trava com "Cannot evict pod as it would violate the budget"
+#
+# Correcao (escolha uma e explique o trade-off):
+#   a) subir replicas para 3            -> mantem a garantia, custa recurso
+#   b) minAvailable: 1                  -> aceita rodar degradado durante o drain
+#   c) maxUnavailable: 1                -> escala junto com o numero de replicas
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: lab-nodes
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-critica
+  namespace: lab-nodes
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api-critica
+  template:
+    metadata:
+      labels:
+        app: api-critica
+    spec:
+      # Força as 2 replicas em nodes diferentes, para o drain de um node
+      # realmente precisar despejar uma delas.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: api-critica
+      containers:
+        - name: web
+          image: nginx:1.27-alpine
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+          # Encerramento gracioso: em producao evita derrubar conexoes vivas
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5"]
+      terminationGracePeriodSeconds: 30
+---
+# minAvailable == replicas => ALLOWED DISRUPTIONS = 0 => drain trava para sempre
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: api-critica-pdb
+  namespace: lab-nodes
+spec:
+  minAvailable: 2          # <<< igual ao numero de replicas: o erro classico
+  selector:
+    matchLabels:
+      app: api-critica

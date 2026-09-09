@@ -1,0 +1,114 @@
+{
+  "kind": "PodList",
+  "apiVersion": "v1",
+  "items": [
+    {
+      "metadata": {
+        "name": "api-gateway-7d9f8b-x2k4l",
+        "namespace": "production",
+        "creationTimestamp": "2026-09-07T10:00:00Z"
+      },
+      "spec": { "nodeName": "k8s-w1" },
+      "status": {
+        "phase": "Running",
+        "containerStatuses": [
+          {
+            "name": "gateway",
+            "ready": false,
+            "restartCount": 12,
+            "state": { "waiting": { "reason": "CrashLoopBackOff" } },
+            "lastState": { "terminated": { "reason": "OOMKilled", "exitCode": 137 } }
+          }
+        ]
+      }
+    },
+    {
+      "metadata": {
+        "name": "worker-queue-5c8d9-mn3p",
+        "namespace": "production",
+        "creationTimestamp": "2026-09-05T08:30:00Z"
+      },
+      "spec": { "nodeName": "k8s-w2" },
+      "status": {
+        "phase": "Running",
+        "containerStatuses": [
+          { "name": "worker", "ready": true, "restartCount": 7,
+            "lastState": { "terminated": { "reason": "Error", "exitCode": 1 } } }
+        ]
+      }
+    },
+    {
+      "metadata": {
+        "name": "cache-redis-0",
+        "namespace": "data",
+        "creationTimestamp": "2026-09-07T17:45:00Z"
+      },
+      "spec": { "nodeName": "k8s-w1" },
+      "status": {
+        "phase": "Running",
+        "containerStatuses": [
+          { "name": "redis", "ready": true, "restartCount": 0 }
+        ]
+      }
+    },
+    {
+      "metadata": {
+        "name": "pod-sem-container-status",
+        "namespace": "staging",
+        "creationTimestamp": "2026-09-07T18:00:00Z"
+      },
+      "spec": {},
+      "status": { "phase": "Pending" }
+    },
+    {
+      "metadata": {
+        "name": "pod-status-nulo",
+        "namespace": "staging",
+        "creationTimestamp": "2026-09-07T18:10:00Z"
+      },
+      "status": { "phase": "Pending", "containerStatuses": null }
+    },
+    {
+      "metadata": {
+        "name": "pod-sem-timestamp",
+        "namespace": "staging"
+      },
+      "status": {
+        "phase": "Running",
+        "containerStatuses": [
+          { "name": "app", "ready": false, "restartCount": 9 }
+        ]
+      }
+    },
+    {
+      "metadata": {
+        "name": "init-falhando",
+        "namespace": "staging",
+        "creationTimestamp": "2026-09-07T16:20:00Z"
+      },
+      "spec": { "nodeName": "k8s-w2" },
+      "status": {
+        "phase": "Pending",
+        "initContainerStatuses": [
+          { "name": "wait-db", "ready": false, "restartCount": 6,
+            "state": { "waiting": { "reason": "CrashLoopBackOff" } },
+            "lastState": { "terminated": { "reason": "Error", "exitCode": 1 } } }
+        ],
+        "containerStatuses": []
+      }
+    },
+    {
+      "metadata": {
+        "name": "timestamp-sem-Z",
+        "namespace": "staging",
+        "creationTimestamp": "2026-09-07T12:00:00+00:00"
+      },
+      "status": {
+        "phase": "Running",
+        "containerStatuses": [
+          { "name": "app", "ready": true, "restartCount": 8 }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,105 @@
+# Cenarios de rede e service discovery.
+# Aplicar: kubectl apply -f network-scenarios.yaml
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: frontend
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: backend
+---
+# Backend saudavel: 2 replicas servindo na 80
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      containers:
+        - name: web
+          image: nginx:1.27-alpine
+          ports:
+            - containerPort: 80
+---
+# Service CORRETO - deve ter Endpoints populados
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  namespace: backend
+spec:
+  selector:
+    app: api
+  ports:
+    - port: 80
+      targetPort: 80
+---
+# Service QUEBRADO - selector nao casa com nenhum pod.
+# Sintoma classico: "connection refused" / timeout, mas o pod esta Running.
+# Diagnostico: kubectl get endpoints api-quebrado -> ENDPOINTS <none>
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-quebrado
+  namespace: backend
+spec:
+  selector:
+    app: api-typo        # <<< o deployment usa app=api
+  ports:
+    - port: 80
+      targetPort: 80
+---
+# Service com targetPort ERRADO - Endpoints existem, mas a conexao falha.
+# Diferencia-se do anterior justamente por TER endpoints.
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-porta-errada
+  namespace: backend
+spec:
+  selector:
+    app: api
+  ports:
+    - port: 80
+      targetPort: 8080   # <<< nginx escuta na 80
+---
+# Pod cliente para testes (curl, dig, nc)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: client
+  namespace: frontend
+  labels:
+    app: client
+spec:
+  containers:
+    - name: tools
+      image: nicolaka/netshoot:latest
+      command: ["sleep", "infinity"]
+---
+# Segundo cliente, no mesmo namespace do backend, para provar que a
+# NetworkPolicy abaixo bloqueia por NAMESPACE e nao por pod.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: client-interno
+  namespace: backend
+  labels:
+    app: client-interno
+spec:
+  containers:
+    - name: tools
+      image: nicolaka/netshoot:latest
+      command: ["sleep", "infinity"]

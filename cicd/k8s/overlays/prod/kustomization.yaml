@@ -1,0 +1,26 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: demo-prod
+resources:
+  - ../../base
+# Prod usa tag imutavel (SHA do commit), nunca 'latest'.
+# Promocao e um commit alterando esta linha — auditavel e reversivel.
+images:
+  - name: ghcr.io/mateusjacomine/demo-api
+    newTag: dev
+replicas:
+  - name: demo-api
+    count: 2
+labels:
+  - includeSelectors: false
+    pairs:
+      app.kubernetes.io/version: prod
+      environment: prod
+patches:
+  - target:
+      kind: Deployment
+      name: demo-api
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: 100m

@@ -1,0 +1,129 @@
+# Cenarios de falha em nivel de Pod.
+# Aplicar:  kubectl apply -f broken-pods.yaml
+# Limpar:   kubectl delete -f broken-pods.yaml
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: lab-pods
+---
+# 1) CrashLoopBackOff - processo sai com codigo 1 apos 5s.
+#    Diagnostico: kubectl logs --previous  (o container atual pode nem existir)
+#                 exit code aparece em: kubectl describe pod -> Last State: Terminated
+apiVersion: v1
+kind: Pod
+metadata:
+  name: crashloop
+  namespace: lab-pods
+spec:
+  containers:
+    - name: app
+      image: busybox:1.36
+      command: ["/bin/sh", "-c"]
+      args:
+        - |
+          echo "iniciando..."
+          echo "conectando ao banco em db.invalido:5432"
+          sleep 5
+          echo "ERRO FATAL: nao consegui resolver db.invalido" >&2
+          exit 1
+---
+# 2) OOMKilled - limit de 32Mi, processo aloca ~200Mi.
+#    Diagnostico: describe -> Last State: Terminated, Reason: OOMKilled, Exit Code: 137
+#    137 = 128 + 9 (SIGKILL do OOM killer do kernel, via cgroup memory.max)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: oomkilled
+  namespace: lab-pods
+spec:
+  containers:
+    - name: hungry
+      image: polinux/stress
+      command: ["stress"]
+      args: ["--vm", "1", "--vm-bytes", "200M", "--vm-hang", "0"]
+      resources:
+        requests:
+          memory: "16Mi"
+          cpu: "50m"
+        limits:
+          memory: "32Mi"   # bem abaixo do que o processo pede -> OOM garantido
+          cpu: "200m"
+---
+# 3) Pending - request de memoria impossivel para o cluster.
+#    Diagnostico: describe -> Events: FailedScheduling
+#                 "0/3 nodes are available: Insufficient memory"
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pending-recursos
+  namespace: lab-pods
+spec:
+  containers:
+    - name: app
+      image: nginx:1.27-alpine
+      resources:
+        requests:
+          memory: "64Gi"    # nenhum node do lab tem isso
+          cpu: "32"
+---
+# 4) Readiness probe mal configurada - porta errada.
+#    Pod fica Running mas NUNCA Ready -> nao entra nos Endpoints do Service.
+#    Diagnostico: describe -> Events: Readiness probe failed: connection refused
+apiVersion: v1
+kind: Pod
+metadata:
+  name: probe-errada
+  namespace: lab-pods
+  labels:
+    app: probe-errada
+spec:
+  containers:
+    - name: web
+      image: nginx:1.27-alpine
+      ports:
+        - containerPort: 80
+      readinessProbe:
+        httpGet:
+          path: /
+          port: 8080        # nginx escuta na 80, nao na 8080
+        initialDelaySeconds: 3
+        periodSeconds: 5
+---
+# 5) ImagePullBackOff - tag inexistente.
+#    Diagnostico: describe -> Events: Failed to pull image ... not found
+apiVersion: v1
+kind: Pod
+metadata:
+  name: image-inexistente
+  namespace: lab-pods
+spec:
+  containers:
+    - name: app
+      image: nginx:versao-que-nao-existe-999
+---
+# 6) Liveness probe agressiva demais - reinicia um app que so demora a subir.
+#    Classico de producao: o app leva 30s para carregar, a probe mata em 6s.
+#    Diagnostico: RESTARTS sobe continuamente, describe -> Liveness probe failed
+apiVersion: v1
+kind: Pod
+metadata:
+  name: liveness-agressiva
+  namespace: lab-pods
+spec:
+  containers:
+    - name: lento
+      image: busybox:1.36
+      command: ["/bin/sh", "-c"]
+      args:
+        - |
+          echo "warm-up longo (30s)..."
+          sleep 30
+          echo "pronto!" > /tmp/ready
+          httpd -f -p 8080 -h /tmp 2>/dev/null || sleep 3600
+      livenessProbe:
+        exec:
+          command: ["cat", "/tmp/ready"]
+        initialDelaySeconds: 3   # deveria ser >30, ou usar startupProbe
+        periodSeconds: 3
+        failureThreshold: 1

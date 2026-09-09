@@ -1,0 +1,11 @@
+# maxUnavailable (nao minAvailable) escala junto com o numero de replicas
+# e nao trava o drain quando replicas == minAvailable.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: demo-api
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: demo-api

@@ -1,0 +1,32 @@
+# A Application e o coracao do GitOps: declara "o estado de demo-dev deve ser
+# o que estiver neste caminho do repositorio". O Argo CD faz o resto.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: demo-api-dev
+  namespace: argocd
+  finalizers:
+    # Garante que deletar a Application remova tambem os recursos no cluster
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/mateusjacomine/k8s-gitops-lab.git
+    targetRevision: main
+    path: cicd/k8s/overlays/dev
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: demo-dev
+  syncPolicy:
+    automated:
+      prune: true       # remove do cluster o que sumiu do git
+      selfHeal: true    # desfaz alteracao manual feita direto no cluster
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

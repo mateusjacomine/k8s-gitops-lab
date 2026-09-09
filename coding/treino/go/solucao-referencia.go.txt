@@ -1,0 +1,51 @@
+// SOLUCAO DE REFERENCIA — só olhe DEPOIS de tentar.
+// Substitua o corpo de runPool em main.go por isto (e adicione "sync" aos imports).
+
+func runPool(ctx context.Context, items []string, workers int) []Result {
+	if workers < 1 {
+		workers = 1
+	}
+	if workers > len(items) && len(items) > 0 {
+		workers = len(items)
+	}
+
+	jobs := make(chan string)
+	results := make(chan Result, len(items)) // buffer: worker nunca bloqueia ao entregar
+
+	var wg sync.WaitGroup
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done() // 2. garante o decremento mesmo com return cedo
+			for it := range jobs {
+				v, err := process(ctx, it)
+				results <- Result{Item: v, Err: err}
+			}
+		}()
+	}
+
+	// produtor
+	go func() {
+		defer close(jobs) // 1. ESSENCIAL: solta os workers do range
+		for _, it := range items {
+			select {
+			case jobs <- it:
+			case <-ctx.Done(): // 4. para de enfileirar se cancelou
+				return
+			}
+		}
+	}()
+
+	// 3. fecha results só depois que TODOS os workers saírem.
+	// Se wg.Wait() fosse chamado na main antes do range, daria deadlock.
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	out := make([]Result, 0, len(items))
+	for r := range results {
+		out = append(out, r)
+	}
+	return out
+}
