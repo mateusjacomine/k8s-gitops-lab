@@ -99,6 +99,39 @@ kubectl -n argocd patch app demo-api-prod --type merge \
   -p '{"operation":{"sync":{"revision":"main"}}}'
 ```
 
+## Validado neste cluster
+
+Executado de ponta a ponta, não apenas escrito:
+
+| Verificação | Resultado |
+|---|---|
+| Pipeline completo (test → build → update-manifest) | ✅ 57s, verde |
+| Bot commitou a nova tag | ✅ `deploy(dev): 7962b92 [skip ci]` |
+| Argo CD sincronizou sozinho | ✅ `Synced` / `Healthy` |
+| Imagem em execução | ✅ `ghcr.io/mateusjacomine/demo-api:7962b92` |
+| App reporta a versão do commit | ✅ `{"version":"7962b92"}` |
+| Métricas Prometheus | ✅ 131 linhas, com histograma para p95/p99 |
+| **Self-healing** | ✅ escalei para 5 réplicas → **voltou para 1 em ~5s** |
+| Testes da app | ✅ 8 passando |
+
+### Um bug real que a esteira pegou
+
+O primeiro deploy entrou em `CrashLoopBackOff`. Diagnóstico pelo log do
+container: `AssertionError: A version must be provided for OpenAPI`.
+
+**Causa raiz:** o Deployment injetava `APP_VERSION` via `fieldRef` do label
+`app.kubernetes.io/version`, mas o Kustomize aplica esse label com
+`includeSelectors: false` — ele não chega ao pod template. A variável chegava
+**vazia**, e `os.getenv("APP_VERSION", "dev")` não protege: o default só age
+quando a variável **não existe**, não quando existe vazia.
+
+**Correção em duas camadas:** `os.getenv(...) or "dev"` na aplicação, e o valor
+literal no manifesto atualizado pelo CI junto com a tag. Mais um teste de
+regressão que roda em subprocesso.
+
+> Vale contar essa história numa entrevista: é exatamente o tipo de bug que só
+> aparece no cluster e se resolve lendo o log do container, não adivinhando.
+
 ## Decisões de projeto (esteja pronto para justificar)
 
 | Decisão | Por quê |
