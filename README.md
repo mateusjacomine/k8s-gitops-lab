@@ -66,6 +66,7 @@ bash break.sh fix                  # restaura tudo
 | [labs/02-nodes/](labs/02-nodes/) | PDB que bloqueia drain |
 | [labs/03-network/](labs/03-network/) | Services quebrados, NetworkPolicy |
 | [labs/04-observability/](labs/04-observability/) | CPU throttling, classes de QoS |
+| **[COMO-FUNCIONA-CICD.md](COMO-FUNCIONA-CICD.md)** | **A esteira explicada do zero, passo a passo** |
 | **[cicd/](cicd/)** | **Esteira GitOps: FastAPI + Actions + Argo CD** |
 | **[coding/ESQUELETOS.md](coding/ESQUELETOS.md)** | **O que memorizar para codar do zero (~45 e ~60 linhas)** |
 | **[coding/treino/](coding/treino/)** | **Exercícios em branco com testes automáticos** |
@@ -111,7 +112,10 @@ Recupere a senha inicial com:
 kubectl -n argocd get secret argocd-initial-admin-secret   -o jsonpath='{.data.password}' | base64 -d
 ```
 
-Detalhes em [cicd/README.md](cicd/README.md).
+📘 **Novo por aqui?** Leia [COMO-FUNCIONA-CICD.md](COMO-FUNCIONA-CICD.md) —
+explica a esteira inteira do zero, sem pressupor Docker ou Kubernetes.
+
+Detalhes técnicos em [cicd/README.md](cicd/README.md).
 
 ## Roteiro sugerido (48h)
 
