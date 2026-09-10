@@ -1,0 +1,90 @@
+# Valores dimensionados para um lab de 3 nos com ~2.5Gi por no.
+# O padrao do chart pede muito mais memoria do que este cluster tem.
+
+# --- Componentes desligados: nao cabem e nao sao necessarios aqui ---
+alertmanager:
+  enabled: false           # sem rotas de notificacao neste lab
+
+# O control-plane do kubeadm ja e monitorado via kubelet; os scrapers
+# dedicados falhariam porque os componentes escutam em 127.0.0.1.
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeProxy:
+  enabled: false
+kubeEtcd:
+  enabled: false
+
+prometheusOperator:
+  resources:
+    requests: { cpu: 25m, memory: 64Mi }
+    limits:   { memory: 192Mi }
+
+prometheus:
+  prometheusSpec:
+    # Retencao curta: o disco do lab tem 15Gi por no
+    retention: 6h
+    retentionSize: 1GB
+    scrapeInterval: 30s
+    evaluationInterval: 30s
+
+    resources:
+      requests: { cpu: 100m, memory: 384Mi }
+      limits:   { memory: 768Mi }
+
+    # emptyDir: os dados somem se o pod reiniciar. Aceitavel num lab e
+    # evita depender de StorageClass, que este cluster nao tem.
+    storageSpec: {}
+
+    # CRITICO: sem isto o Prometheus so descobre ServiceMonitors que
+    # tenham o label do release, ignorando os que criamos a mao.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+
+    # Nao agenda no control-plane, que ja esta em 66% de memoria
+    nodeSelector:
+      node-role.kubernetes.io/control-plane: null
+    tolerations: []
+
+grafana:
+  adminPassword: admin
+  defaultDashboardsTimezone: America/Sao_Paulo
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits:   { memory: 256Mi }
+  persistence:
+    enabled: false
+  service:
+    type: NodePort
+    nodePort: 30300
+  # Dashboards prontos da comunidade, baixados na inicializacao
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: default
+          orgId: 1
+          folder: ""
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/default
+
+nodeExporter:
+  enabled: true
+
+prometheus-node-exporter:
+  resources:
+    requests: { cpu: 25m, memory: 32Mi }
+    limits:   { memory: 64Mi }
+
+kubeStateMetrics:
+  enabled: true
+
+kube-state-metrics:
+  resources:
+    requests: { cpu: 25m, memory: 64Mi }
+    limits:   { memory: 128Mi }

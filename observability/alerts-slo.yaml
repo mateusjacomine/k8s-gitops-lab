@@ -1,0 +1,92 @@
+# Regras de alerta baseadas em SLO, nao em recursos.
+#
+# Principio: alerte por SINTOMA DO USUARIO (latencia, erro), nao por causa
+# (CPU alta). "CPU em 90%" sem impacto no usuario e ruido; "p95 acima de
+# 500ms" e um problema real.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: demo-api-slo
+  namespace: monitoring
+  labels:
+    release: monitoring        # o Prometheus so carrega regras com este label
+spec:
+  groups:
+    - name: demo-api.slo
+      interval: 30s
+      rules:
+        # ---------- SLI: disponibilidade ----------
+        - record: demo_api:availability:ratio_5m
+          expr: |
+            sum(rate(http_requests_total{status!~"5.."}[5m]))
+              /
+            sum(rate(http_requests_total[5m]))
+
+        # ---------- SLI: latencia p95 e p99 ----------
+        - record: demo_api:latency_p95:5m
+          expr: |
+            histogram_quantile(0.95,
+              sum(rate(http_request_duration_seconds_bucket[5m])) by (le))
+
+        - record: demo_api:latency_p99:5m
+          expr: |
+            histogram_quantile(0.99,
+              sum(rate(http_request_duration_seconds_bucket[5m])) by (le))
+
+        # ---------- ALERTA: erro acima do orcamento ----------
+        # SLO de 99.9% => 0.1% de erro tolerado.
+        # Burn rate 14.4x consome o orcamento de 30 dias em 2 dias.
+        - alert: DemoApiErrorBudgetBurnFast
+          expr: |
+            (1 - demo_api:availability:ratio_5m) > (14.4 * 0.001)
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "demo-api queimando error budget 14.4x mais rapido"
+            description: "Taxa de erro em {{ $value | humanizePercentage }}. No ritmo atual o orcamento de 30 dias acaba em 2 dias."
+
+        # ---------- ALERTA: latencia ----------
+        - alert: DemoApiHighLatencyP95
+          expr: demo_api:latency_p95:5m > 0.5
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "p95 acima de 500ms"
+            description: "p95 em {{ $value }}s nos ultimos 5 minutos."
+
+        # ---------- ALERTA: CPU throttling ----------
+        # A causa silenciosa: app lenta, sem erro, sem restart, log limpo.
+        - alert: DemoApiCpuThrottling
+          expr: |
+            rate(container_cpu_cfs_throttled_periods_total{container="api"}[5m])
+              /
+            rate(container_cpu_cfs_periods_total{container="api"}[5m]) > 0.25
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Container throttled em mais de 25% dos periodos"
+            description: "Limit de CPU apertado demais. Sem erro visivel, so latencia."
+
+        # ---------- ALERTA: pod reiniciando ----------
+        - alert: DemoApiPodRestarting
+          expr: |
+            increase(kube_pod_container_status_restarts_total{namespace=~"demo-.*"}[15m]) > 3
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Pod {{ $labels.pod }} reiniciou mais de 3x em 15min"
+            description: "Investigue com: kubectl logs {{ $labels.pod }} --previous"
+
+        # ---------- ALERTA: sem replicas prontas ----------
+        - alert: DemoApiNoReadyReplicas
+          expr: |
+            kube_deployment_status_replicas_ready{deployment="demo-api"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "demo-api sem nenhuma replica pronta em {{ $labels.namespace }}"

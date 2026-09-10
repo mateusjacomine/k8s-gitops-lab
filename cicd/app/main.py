@@ -32,13 +32,13 @@ BOOT_DELAY = float(os.getenv("BOOT_DELAY_SECONDS", "0"))
 REQUEST_LATENCY = Histogram(
     "http_request_duration_seconds",
     "Latencia das requisicoes HTTP",
-    ["method", "endpoint"],
+    ["method", "route"],
     buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0),
 )
 REQUEST_COUNT = Counter(
     "http_requests_total",
     "Total de requisicoes HTTP",
-    ["method", "endpoint", "status"],
+    ["method", "route", "status"],
 )
 APP_INFO = Gauge("app_info", "Metadados da aplicacao", ["version"])
 READY = Gauge("app_ready", "1 quando a aplicacao esta pronta")
@@ -71,11 +71,13 @@ async def track_metrics(request, call_next):
 
     # Usa a rota registrada (/items/{id}), nao o path concreto, para nao
     # explodir a cardinalidade da metrica.
-    route = request.scope.get("route")
-    endpoint = getattr(route, "path", request.url.path)
+    # Label 'route' e nao 'endpoint': o Prometheus Operator injeta um label
+    # 'endpoint' com o nome da porta do Service, sobrescrevendo o nosso.
+    matched = request.scope.get("route")
+    route = getattr(matched, "path", request.url.path)
 
-    REQUEST_LATENCY.labels(request.method, endpoint).observe(elapsed)
-    REQUEST_COUNT.labels(request.method, endpoint, response.status_code).inc()
+    REQUEST_LATENCY.labels(request.method, route).observe(elapsed)
+    REQUEST_COUNT.labels(request.method, route, response.status_code).inc()
     return response
 
 

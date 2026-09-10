@@ -61,6 +61,18 @@ def test_metrics_nao_explode_cardinalidade():
     assert "ms=1" not in corpo
 
 
+def test_label_route_e_nao_endpoint():
+    """
+    O Prometheus Operator injeta um label 'endpoint' com o nome da porta do
+    Service. Se a app tambem usar 'endpoint', o do Operator vence e todas as
+    rotas colapsam num unico valor, quebrando as queries por rota.
+    """
+    client.get("/health")
+    corpo = client.get("/metrics").text
+    assert 'route="/health"' in corpo
+    assert 'endpoint="/health"' not in corpo
+
+
 def test_version_nunca_vazia():
     """
     Regressao: APP_VERSION definido porem VAZIO fazia o FastAPI abortar no

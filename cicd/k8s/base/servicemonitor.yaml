@@ -1,0 +1,23 @@
+# Diz ao Prometheus para coletar metricas deste Service.
+# O Prometheus Operator observa recursos ServiceMonitor e gera a
+# configuracao de scrape automaticamente — nao se edita prometheus.yml.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: demo-api
+  labels:
+    app: demo-api
+spec:
+  selector:
+    matchLabels:
+      app: demo-api        # casa com o Service demo-api
+  endpoints:
+    - port: http           # nome da porta no Service, nao o numero
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
+      # O Prometheus Operator injeta um label 'endpoint' com o NOME DA PORTA,
+      # que colide com o label 'endpoint' da propria aplicacao (a rota HTTP).
+      # Sem este honorLabels, todas as rotas viram endpoint="http" e as
+      # queries por rota param de funcionar.
+      honorLabels: true
